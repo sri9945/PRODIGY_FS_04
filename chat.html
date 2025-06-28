@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chat</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: 
+        url('https://img.freepik.com/free-vector/shiny-polygonal-background_1128-49.jpg') no-repeat center center fixed;
+      background-size: cover;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      color: #333;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #usernameBox {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    input[type="text"], textarea {
+      width: 100%;
+      max-width: 600px;
+      font-size: 1em;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+      resize: vertical;
+    }
+
+    textarea {
+      min-height: 80px;
+    }
+
+    .button {
+      padding: 12px 20px;
+      font-size: 1em;
+      color: white;
+      background: linear-gradient(135deg, #4caf50, #45a049);
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      box-shadow: 2px 4px 6px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s, background 0.2s;
+      margin-bottom: 20px;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, #45a049, #4caf50);
+    }
+
+    .button:active {
+      transform: translateY(1px);
+    }
+
+    .output {
+      width: 100%;
+      max-width: 600px;
+      background: #fff;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.1);
+      overflow-y: auto;
+      max-height: 400px;
+      white-space: pre-wrap;
+    }
+
+    /* New styles for chat bubbles & avatars */
+    .message {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      background-color: #4caf50;
+      color: white;
+      font-weight: bold;
+      font-size: 1.2em;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-right: 10px;
+      user-select: none;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    .message-content {
+      max-width: 540px;
+      word-wrap: break-word;
+      background-color: #e0f2f1; /* light teal bubble */
+      padding: 10px 15px;
+      border-radius: 20px;
+      box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 2em;
+      }
+
+      input[type="text"], textarea, .output {
+        width: 90%;
+      }
+
+      .button {
+        font-size: 0.9em;
+        padding: 10px 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Chat</h1>
+
+  <div id="usernameBox">
+    <label for="usernameInput">Enter your username:</label><br />
+    <input type="text" id="usernameInput" placeholder="Your username" />
+    <button class="button" id="setUsernameButton">Set Username</button>
+  </div>
+
+  <textarea id="inputBox" placeholder="Type your message here..."></textarea>
+  <button class="button" id="sendButton">Send</button>
+
+  <div class="output" id="outputBox">Loading messages...</div>
+
+  <script>
+    const scriptURL = "https://script.google.com/macros/s/AKfycbxPr_td-gb2V59U6ZxykfzcTSAcYhkoBfU58JOMbHnql-diGNgLJ57PzGoDU98juF5F/exec";
+
+    const usernameInput = document.getElementById("usernameInput");
+    const setUsernameButton = document.getElementById("setUsernameButton");
+    const inputBox = document.getElementById("inputBox");
+    const outputBox = document.getElementById("outputBox");
+    const sendButton = document.getElementById("sendButton");
+    const usernameBox = document.getElementById("usernameBox");
+
+    let username = localStorage.getItem("username");
+
+    if (!username) {
+      usernameBox.style.display = "block";
+    } else {
+      usernameBox.style.display = "none";
+    }
+
+    setUsernameButton.addEventListener("click", () => {
+      const entered = usernameInput.value.trim();
+      if (entered) {
+        username = entered;
+        localStorage.setItem("username", username);
+        usernameBox.style.display = "none";
+        fetchContent();
+      } else {
+        alert("Please enter a username.");
+      }
+    });
+
+    sendButton.addEventListener("click", () => {
+      const text = inputBox.value.trim();
+      if (!username) {
+        alert("Please set your username first!");
+        return;
+      }
+      if (text) {
+        fetch(`${scriptURL}?action=save&user=${encodeURIComponent(username)}&content=${encodeURIComponent(text)}`)
+          .then(() => {
+            inputBox.value = "";
+            fetchContent();
+          })
+          .catch((err) => {
+            console.error("Error sending message:", err);
+            alert("Failed to send message.");
+          });
+      }
+    });
+
+    async function fetchContent() {
+      try {
+        const res = await fetch(`${scriptURL}?action=fetch`);
+        if (!res.ok) throw new Error("Failed to fetch messages");
+        const data = await res.json();
+
+        if (data.length === 0) {
+          outputBox.innerHTML = "<p>No messages yet.</p>";
+          return;
+        }
+
+        outputBox.innerHTML = data.map(item => {
+          const firstLetter = escapeHtml(item.user.charAt(0));
+          return `
+            <div class="message">
+              <div class="avatar">${firstLetter}</div>
+              <div class="message-content"><strong>${escapeHtml(item.user)}:</strong> ${escapeHtml(item.content)}</div>
+            </div>
+          `;
+        }).join("");
+        outputBox.scrollTop = outputBox.scrollHeight; // Scroll to bottom
+      } catch (err) {
+        console.error("Error fetching messages:", err);
+        outputBox.innerHTML = "<p>Error loading messages.</p>";
+      }
+    }
+
+    function escapeHtml(text) {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    fetchContent();
+    setInterval(fetchContent, 3000);
+  </script>
+</body>
+</html>
